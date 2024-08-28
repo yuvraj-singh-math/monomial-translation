@@ -90,17 +90,34 @@ function is_det_zero(mat)
     error("not square")
 end
 
+function niceprod(arrcols,illegal)
+    paths=[]
+    if length(arrcols)>1
+        for element in arrcols[1]
+           push!(paths,vcat.(Ref(element),niceprod(arrcols[2:end],vcat(element,illegal)))...)
+        end
+        return paths
+    else
+        paths=filter(m->!(m in illegal),arrcols[1])
+    end
+    return paths
+end
+
 function fully_supported_minors(mat)
     # We tag each column to deal with two that may have identical entries
      cols=[[i,mat[:,i]] for i in 1:number_of_columns(mat)]
     cols_per_sys=[filter(m->!iszero(m[2][i]),cols) for i in 1:number_of_rows(mat)];
-    degenminors=Iterators.product(cols_per_sys...)
-    # delete those with repeat columns since they will always be det 0
-    # used to collect first and then filter, this gives OOM
-    dupeminors=Iterators.filter(m->length(m)==length(unique(m)),degenminors)
-    minors=collect(dupeminors)
+    # OLD: very slow, but doesn't crash julia for larger systems
+    #degenminors=Iterators.product(cols_per_sys...)
+    ## delete those with repeat columns since they will always be det 0
+    ## used to collect first and then filter, this gives OOM
+    #dupeminors=Iterators.filter(m->length(m)==length(unique(m)),degenminors)
+    #minors=collect(dupeminors)
+    # NEW: faster (?) but does crash julia on large systems. make nonrecursive TODO
+    dupeminors=niceprod(cols_per_sys,[])
+
     # select minors unique up to pertubation of columns
-    minors=unique(Set,minors)
+    minors=unique(Set,dupeminors)
     minors=[[c[2] for c in m] for m in minors]
     return minors
 end
