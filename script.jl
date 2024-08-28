@@ -90,15 +90,20 @@ function is_det_zero(mat)
     error("not square")
 end
 
+# Given a list of n subsets, we want to choose one element from each such that we do not choose the same element twice
+# This recursive function takes a path from the first subset to the last, and then selects from there
 function niceprod(arrcols,illegal)
     paths=[]
     if length(arrcols)>1
         for element in arrcols[1]
-           push!(paths,vcat.(Ref(element),niceprod(arrcols[2:end],vcat(element,illegal)))...)
+            if !(element in illegal)
+            push!(paths,vcat.(Ref(element),niceprod(arrcols[2:end],vcat(element,illegal)))...)
+            end
         end
         return paths
     else
-        paths=filter(m->!(m in illegal),arrcols[1])
+        # return all the elements that haven't been repeated earlier in the 
+        push!(paths,filter(m->!(m in illegal),arrcols[1])...)
     end
     return paths
 end
@@ -113,8 +118,11 @@ function fully_supported_minors(mat)
     ## used to collect first and then filter, this gives OOM
     #dupeminors=Iterators.filter(m->length(m)==length(unique(m)),degenminors)
     #minors=collect(dupeminors)
+
     # NEW: faster (?) but does crash julia on large systems. make nonrecursive TODO
-    dupeminors=niceprod(cols_per_sys,[])
+    # for some reason, if niceprod is given a list like [ [[1],[2]],[[3],[4]] ], it removes a layer of nesting
+    # returning [1,3],[2,4] etc. instead of the expected [[1],[3]],[[2],[4]]. We add extra brackets as a hacky workaround
+    dupeminors=niceprod([[[col] for col in cols] for cols in cols_per_sys],[])
 
     # select minors unique up to pertubation of columns
     minors=unique(Set,dupeminors)
