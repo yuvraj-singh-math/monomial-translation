@@ -151,15 +151,40 @@ function fully_supported_minors(mat)
     # slow, but not as slow as before (?)
     dupeminors=niceprod_nonrecur(cols_per_sys)
 
-    # select minors unique up to pertubation of columns
+    # select minors unique up to perturbation of columns
     minors=unique(Set,dupeminors)
     minors=[[c[2] for c in m] for m in minors]
     return minors
 end
 
+function fully_supported_minors_old(mat)
+    cols=[[i,mat[:,i]] for i in 1:number_of_columns(mat)]
+    cols_per_sys=[filter(m->!iszero(m[2][i]),cols) for i in 1:number_of_rows(mat)];
+    # OLD: very slow, but doesn't crash julia for larger systems
+    degenminors=Iterators.product(cols_per_sys...)
+    ## delete those with repeat columns since they will always be det 0
+    ## used to collect first and then filter, this gives OOM
+    dupeminors=Iterators.filter(m->length(m)==length(unique(m)),degenminors)
+    minors=collect(dupeminors)
+
+    # slow, but not as slow as before (?)
+
+    # select minors unique up to perturbation of columns
+    minors=unique(Set,dupeminors)
+    minors=[[c[2] for c in m] for m in minors]
+    return minors
+end
+
+
 # returns number of zero minors that we consider
 function number_of_zero_minors(mat)
     minors=fully_supported_minors(mat)
+    niceminors=filter(m->is_det_zero(matrix(QQ,hcat(m...))),minors)
+    return length(niceminors)
+end
+
+# returns number of zero minors that we consider
+function number_of_zero_minors_provided_minors(minors)
     niceminors=filter(m->is_det_zero(matrix(QQ,hcat(m...))),minors)
     return length(niceminors)
 end
@@ -172,8 +197,9 @@ function data_dump_matrix(sys)
     matrix=[]
     for per in perturbSystem(sys)
         mat=matrix_from_system(per[1])
-        numRelevantMinors=number_of_fully_supported_minors(mat)
-        numZeroMinors=number_of_zero_minors(mat)
+        fullySupportedMinors=fully_supported_minors(mat)
+        numRelevantMinors=length(fullySupportedMinors)
+        numZeroMinors=number_of_zero_minors_provided_minors(fullySupportedMinors)
         numColumns=number_of_columns(mat)
         numMinors=binomial(max(numColumns,number_of_rows(mat)),min(numColumns,number_of_rows(mat)))
         row=[per[2],numRelevantMinors,numZeroMinors,numMinors,numColumns]
