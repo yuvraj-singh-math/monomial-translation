@@ -149,7 +149,7 @@ function fully_supported_minors(mat)
     #minors=collect(dupeminors)
 
     # slow, but not as slow as before (?)
-    dupeminors=niceprod_nonrecur([[[col] for col in cols] for cols in cols_per_sys],[])
+    dupeminors=niceprod_nonrecur(cols_per_sys)
 
     # select minors unique up to pertubation of columns
     minors=unique(Set,dupeminors)
