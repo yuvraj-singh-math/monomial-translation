@@ -28,10 +28,10 @@ rejects=Dict(vcat([id=>"Fails to load in Julia" for id in ["BIOMD0000000060","BI
 odebaseSystems=[]
 
 for file in chems
-    include(file)
-    randCoeff=rand(Int8,length(gens(paramsRing)))
-    phi=hom(polRing,polRing,c->evaluate(c,randCoeff),gens(polRing))
-    push!(odebaseSystems, OdebaseNode(name,true,true,1,1,length(gens(polRing)),chemSystem,[phi(x) for x in chemSystem],[],paramsRing,polRing))
+    include(file);
+    randCoeff=rand(Int8,length(gens(paramsRing)));
+    phi=hom(polRing,polRing,c->evaluate(c,randCoeff),gens(polRing));
+    push!(odebaseSystems, OdebaseNode(name,true,true,1,1,length(gens(polRing)),chemSystem,[phi(x) for x in chemSystem],[],paramsRing,polRing));
 end
 
 unfiltered_systems=[OdebaseNode(sys.ID,true,true,1,1,sys.numSpecies,sys.param_polynomial_system,filter(l->!iszero(l),unique(sys.generic_polynomial_system)),[],sys.paramsRing,sys.polRing) for sys in odebaseSystems]
@@ -108,9 +108,38 @@ function niceprod(arrcols,illegal)
     return paths
 end
 
+function niceprod_nonrecur(arrcols)
+    # We start from the biggest set because this is most likely* to contain the most duplicates
+    # * for ODEBASE systems with a lot of overlap
+    # worst case is being of the same complexity as Iterators.product()
+    arrcols=sort(arrcols, rev=true)
+    paths=[[element] for element in arrcols[1]]
+    n=2
+    for set in arrcols[2:end]
+        iterpaths=copy(paths)
+        for path in iterpaths
+            filter!(m->m!=path,paths)
+            newpath=Vector(undef,n)
+            for i in 1:(n-1)
+                newpath[i]=path[i]
+            end
+            for element in set
+                if !(element in path)
+                    newpath[end]=element
+                    push!(paths,newpath)
+                end
+            end
+        end
+        n+=1
+    end
+    return paths
+end
+
+                              
+
 function fully_supported_minors(mat)
     # We tag each column to deal with two that may have identical entries
-     cols=[[i,mat[:,i]] for i in 1:number_of_columns(mat)]
+    cols=[[i,mat[:,i]] for i in 1:number_of_columns(mat)]
     cols_per_sys=[filter(m->!iszero(m[2][i]),cols) for i in 1:number_of_rows(mat)];
     # OLD: very slow, but doesn't crash julia for larger systems
     #degenminors=Iterators.product(cols_per_sys...)
@@ -119,10 +148,8 @@ function fully_supported_minors(mat)
     #dupeminors=Iterators.filter(m->length(m)==length(unique(m)),degenminors)
     #minors=collect(dupeminors)
 
-    # NEW: faster (?) but does crash julia on large systems. make nonrecursive TODO
-    # for some reason, if niceprod is given a list like [ [[1],[2]],[[3],[4]] ], it removes a layer of nesting
-    # returning [1,3],[2,4] etc. instead of the expected [[1],[3]],[[2],[4]]. We add extra brackets as a hacky workaround
-    dupeminors=niceprod([[[col] for col in cols] for cols in cols_per_sys],[])
+    # slow, but not as slow as before (?)
+    dupeminors=niceprod_nonrecur([[[col] for col in cols] for cols in cols_per_sys],[])
 
     # select minors unique up to pertubation of columns
     minors=unique(Set,dupeminors)
