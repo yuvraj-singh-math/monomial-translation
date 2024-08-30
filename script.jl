@@ -53,7 +53,7 @@ end
 # unfiltered_systems=filter(s->s.numSpecies<6,unfiltered_systems)
 const systems=copy(unfiltered_systems)
 
-# We return the 2n pertubations of degree 1 as well as the system itself
+# We return the 2n perturbations of degree 1 as well as the system itself
 function perturbSystem(system)
     trans=[]
     for m in gens(system.polRing)
@@ -195,7 +195,11 @@ end
 
 function data_dump_matrix(sys)
     matrix=[]
-    for per in perturbSystem(sys)
+    perturbations=perturbSystem(sys)
+    i=1
+    len=length(perturbations)
+    for per in perturbations
+        println("Perturbation $i/$len")
         mat=matrix_from_system(per[1])
         fullySupportedMinors=fully_supported_minors(mat)
         numRelevantMinors=length(fullySupportedMinors)
@@ -211,7 +215,7 @@ end
 
 for sys in systems
     name=sys.ID
-    print(name)
+    println(name)
     matrix=data_dump_matrix(sys)
     num=number_of_columns(matrix)
     i=1
