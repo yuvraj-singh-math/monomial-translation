@@ -189,9 +189,12 @@ open("odebase/src/rejects.jl","w") do io
     println(io,rejects)
 end
 
+count=1
+total=length(systems)
 for sys in systems
     name=sys.ID
-    println(name)
+    print(name)
+    println(", system $count/$total:")
     matrix=data_dump_matrix(sys)
     num=number_of_columns(matrix)
     i=1
@@ -210,4 +213,5 @@ for sys in systems
     open("odebase/src/$name-matrix.jl", "w") do io
         write(io, file)
     end
+    count=count+1
 end
