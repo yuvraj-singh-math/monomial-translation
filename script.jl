@@ -127,7 +127,6 @@ function niceprod_nonrecur(arrcols::Vector{Vector{Int}})
         end
         #println(n)
         paths=newpaths
-        #println(length(paths))
     end
     return paths
 end
