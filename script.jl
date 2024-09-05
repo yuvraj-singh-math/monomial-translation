@@ -191,6 +191,7 @@ end
 count=1
 total=length(systems)
 for sys in systems
+    global count
     name=sys.ID
     print(name)
     println(", system $count/$total:")
