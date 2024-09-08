@@ -1,6 +1,9 @@
 using Oscar;
+using Combinatorics;
+# try to find better implementation
+using BipartiteMatching;
 
-chems=readdir("odebase/src",join=true)
+chems=readdir("odebase/src/odes",join=true)
 # these filters are mostly hacky workarounds
 chems=filter(filename->occursin(".jl",filename)&&(!occursin("odebase.jl",filename))&&(!occursin("rejects.jl",filename))&&(!occursin("matrix",filename))&&!occursin("#",filename),chems)
 
@@ -45,8 +48,9 @@ for file in chems
     randCoeff=rand_nonzero(length(gens(paramsRing)));
     QQpolRing,tup=polynomial_ring(QQ,["$x" for x in gens(polRing)]);
     phi=hom(polRing,QQpolRing,c->evaluate(c,randCoeff),gens(QQpolRing));
+    name2=name
     # we redefine polRing to be of rational type after the map
-    push!(odebaseSystems, OdebaseNode(name,true,true,1,1,length(gens(polRing)),chemSystem,[phi(x) for x in chemSystem],[],paramsRing,QQpolRing));
+    push!(odebaseSystems, OdebaseNode(name2,true,true,1,1,length(gens(polRing)),chemSystem,[phi(x) for x in chemSystem],[],paramsRing,QQpolRing));
 end
 
 unfiltered_systems=[OdebaseNode(sys.ID,true,true,1,1,sys.numSpecies,sys.param_polynomial_system,filter(l->!iszero(l),unique(sys.generic_polynomial_system)),[],sys.paramsRing,sys.polRing) for sys in odebaseSystems];
@@ -56,12 +60,12 @@ for sys in odebaseSystems
  #    so we look at the length of the list of monomials, check if its 1
     if sum([length(collect(monomials(f)))==1 for f in sys.generic_polynomial_system])>0
         rejects[sys.ID]="Contains monomial equation";
-        filter!(s->s!=sys,unfiltered_systems);
+        filter!(s->s.ID!=sys.ID,unfiltered_systems);
     end
 
     if length(unique(collect(Iterators.flatten([collect(monomials(f)) for f in sys.generic_polynomial_system]))))<length(sys.generic_polynomial_system)
         rejects[sys.ID]="Macaulay matrix has more rows than columns";
-        filter!(s->s!=sys,unfiltered_systems);
+        filter!(s->s.ID!=sys.ID,unfiltered_systems);
     end
 end
 
@@ -110,6 +114,7 @@ function is_det_zero(mat::QQMatrix)
     error("not square")
 end
 
+# uses too much memory
 function niceprod_nonrecur(arrcols::Vector{Vector{Int}})
     # We start from the biggest set because this is most likely* to contain the most duplicates
     # * for ODEBASE systems with a lot of overlap
@@ -162,6 +167,45 @@ function number_of_fully_supported_minors(mat::QQMatrix)
     return length(fully_supported_minors(mat))
 end
 
+function is_minor_fully_supported(submat::Vector{Vector{QQFieldElem}})
+    dimen=length(submat)
+    adj_matrix=BitArray{2}(hcat([[!is_zero(submat[i][j]) for i in 1:dimen] for j in 1:dimen]...))
+    a,b=findmaxcardinalitybipartitematching(adj_matrix)
+    # b is a bitvector where the i-th component is true (resp. false) if the i-th row is (resp. is not) matched
+    return prod(b)
+end
+
+function fully_supported_minors_nonsparse(mat::QQMatrix)
+    cols=[mat[:,i] for i in 1:number_of_columns(mat)];
+    allminors=Combinatorics.combinations(cols,number_of_rows(mat));
+    allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
+    zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
+    # try to get around having to collect
+    numallminors=0
+    numzerominors=0
+    for x in allminors
+        numallminors=numallminors+1
+    end
+    for x in zerominors
+        numzerominors=numzerominors+1
+    end
+    return [numallminors,numzerominors]
+end
+
+function fully_supported_minors_nonsparse_collection(mat::QQMatrix)
+    cols=[mat[:,i] for i in 1:number_of_columns(mat)];
+    allminors=Combinatorics.combinations(cols,number_of_rows(mat));
+    allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
+    zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
+    # try to get around having to collect
+    numallminors=length(collect(allminors))
+    allminors=nothing
+    numzerominors=length(collect(zerominors))
+    zerominors=nothing
+    return [numallminors,numzerominors]
+end
+
+
 function data_dump_matrix(sys::OdebaseNode)
     matrix=[]
     perturbations=perturbSystem(sys)
@@ -170,10 +214,8 @@ function data_dump_matrix(sys::OdebaseNode)
     for per in perturbations
         println("Perturbation $i/$len")
         mat=matrix_from_system(per[1])
-        fullySupportedMinors=fully_supported_minors(mat)
         println("Minors computed. Now filtering for zero determinants")
-        numRelevantMinors=length(fullySupportedMinors)
-        numZeroMinors=number_of_zero_minors_provided_minors(fullySupportedMinors)
+        numRelevantMinors,numZeroMinors=fully_supported_minors_nonsparse(mat)
         numColumns=number_of_columns(mat)
         numMinors=binomial(max(numColumns,number_of_rows(mat)),min(numColumns,number_of_rows(mat)))
         row=[per[2],numRelevantMinors,numZeroMinors,numMinors,numColumns]
