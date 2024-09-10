@@ -7,6 +7,11 @@ chems=readdir("odebase/src/odes",join=true)
 # these filters are mostly hacky workarounds
 chems=filter(filename->occursin(".jl",filename)&&(!occursin("odebase.jl",filename))&&(!occursin("rejects.jl",filename))&&(!occursin("matrix",filename))&&!occursin("#",filename),chems)
 
+if length(ARGS)==2
+    global bound::Int=parse(Int,ARGS[1])
+    global slow::Bool=parse(Bool,ARGS[2])
+end
+
 struct OdebaseNode
     ID::String
     rational::Bool
@@ -28,7 +33,7 @@ end
 
 # The initial values for rejects are defined by those systems that have a parameter to the power of another parameter (eg k1^k2)
 # We do not save these as .jl file to begin with as of right now
-rejects=Dict(vcat([id=>"Fails to load in Julia" for id in ["BIOMD0000000060","BIOMD0000000637"]],["BIOMD0000000205"=>"Contains monomial equation"])...)
+rejects=Dict(vcat([id=>"Fails to load in Julia" for id in ["BIOMD0000000060","BIOMD0000000637","BIOMD0000000638"]],["BIOMD0000000205"=>"Contains monomial equation"])...)
 odebaseSystems=OdebaseNode[]
 
 function rand_nonzero(len::Int)
@@ -50,7 +55,7 @@ for file in chems
     phi=hom(polRing,QQpolRing,c->evaluate(c,randCoeff),gens(QQpolRing));
     name2=name
     # we redefine polRing to be of rational type after the map
-    push!(odebaseSystems, OdebaseNode(name2,true,true,1,1,length(gens(polRing)),chemSystem,[phi(x) for x in chemSystem],[],paramsRing,QQpolRing));
+    push!(odebaseSystems, OdebaseNode(name2,true,true,1,1,length(gens(polRing)),chemSystem,[phi(x) for x in union(chemSystem,constraints)],constraints,paramsRing,QQpolRing));
 end
 
 unfiltered_systems=[OdebaseNode(sys.ID,true,true,1,1,sys.numSpecies,sys.param_polynomial_system,filter(l->!iszero(l),unique(sys.generic_polynomial_system)),[],sys.paramsRing,sys.polRing) for sys in odebaseSystems];
@@ -72,8 +77,12 @@ end
 # quick approximation for complexity. better would be to compute the upper bound on no. of fully supported minors
 ## uncomment the two lines below to filter out any systems with number of species>=upperBound
 #upperbound=89
-#unfiltered_systems=filter(s->s.numSpecies<upperbound,unfiltered_systems);
+if @isdefined bound
+unfiltered_systems=filter(s->s.numSpecies==bound,unfiltered_systems);
+else
 unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
+end
+
 const systems=copy(unfiltered_systems);
 
 # We return the 2n perturbations of degree 1 as well as the system itself
@@ -147,7 +156,8 @@ function fully_supported_minors(mat::QQMatrix)
 
     # Convert minors from lists of integers to lists of columns
     minors=Vector{Vector{QQFieldElem}}[[cols[i][2] for i in minor] for minor in minors]
-    return minors
+    niceminors=filter(m->is_det_zero(matrix(QQ,hcat(m...))),minors)
+    return [length(minors),length(niceminors)]
 end
 
 # returns number of zero minors that we consider
@@ -211,11 +221,21 @@ function data_dump_matrix(sys::OdebaseNode)
     perturbations=perturbSystem(sys)
     i=1
     len=length(perturbations)
+    if @isdefined slow
+        if slow
+            fulsup=fully_supported_minors_nonsparse
+        else
+            fulsup=fully_supported_minors
+        end
+    else
+        fulsup=fully_supported_minors_nonsparse
+    end
+    
     for per in perturbations
         println("Perturbation $i/$len")
         mat=matrix_from_system(per[1])
         println("Minors computed. Now filtering for zero determinants")
-        numRelevantMinors,numZeroMinors=fully_supported_minors_nonsparse(mat)
+        numRelevantMinors,numZeroMinors=fulsup(mat)
         numColumns=number_of_columns(mat)
         numMinors=binomial(max(numColumns,number_of_rows(mat)),min(numColumns,number_of_rows(mat)))
         row=[per[2],numRelevantMinors,numZeroMinors,numMinors,numColumns]
@@ -234,7 +254,7 @@ count=1
 total=length(systems)
 for sys in systems
     global count
-    name=sys.ID
+    local name=sys.ID
     print(name)
     println(", system $count/$total:")
     matrix=data_dump_matrix(sys)
