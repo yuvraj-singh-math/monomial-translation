@@ -3,87 +3,20 @@ using Combinatorics;
 # try to find better implementation
 using BipartiteMatching;
 
-chems=readdir("odebase/src/odes",join=true)
-# these filters are mostly hacky workarounds
-chems=filter(filename->occursin(".jl",filename)&&(!occursin("odebase.jl",filename))&&(!occursin("rejects.jl",filename))&&(!occursin("matrix",filename))&&!occursin("#",filename),chems)
-
 if length(ARGS)==2
     global bound::Int=parse(Int,ARGS[1])
     global slow::Bool=parse(Bool,ARGS[2])
 end
-
-struct OdebaseNode
-    ID::String
-    rational::Bool
-    massAction::Bool
-    #? redundant
-    species::Int
-    deficit::Int
-    numSpecies::Int
-    # TODO types for the following
-    # \dot{x}_i is set to 0
-    param_polynomial_system::Vector
-    # should replace this with a function soon
-    generic_polynomial_system::Vector
-    constraints::Vector
-    paramsRing
-    # for now, rational (remove when not in script)
-    polRing::QQMPolyRing
-end
-
-# The initial values for rejects are defined by those systems that have a parameter to the power of another parameter (eg k1^k2)
-# We do not save these as .jl file to begin with as of right now
-rejects=Dict(vcat([id=>"Fails to load in Julia" for id in ["BIOMD0000000060","BIOMD0000000637","BIOMD0000000638"]],["BIOMD0000000205"=>"Contains monomial equation"])...)
-odebaseSystems=OdebaseNode[]
-
-function rand_nonzero(len::Int)
-    ints=Int[]
-    for x in 1:len
-        num=rand(Int8)
-        while num==0
-            num=rand(Int8)
-        end
-        push!(ints,num)
-    end
-    return ints
-end
-
-for file in chems
-    include(file);
-    randCoeff=rand_nonzero(length(gens(paramsRing)));
-    QQpolRing,tup=polynomial_ring(QQ,["$x" for x in gens(polRing)]);
-    phi=hom(polRing,QQpolRing,c->evaluate(c,randCoeff),gens(QQpolRing));
-    name2=name
-    # we redefine polRing to be of rational type after the map
-    push!(odebaseSystems, OdebaseNode(name2,true,true,1,1,length(gens(polRing)),chemSystem,[phi(x) for x in union(chemSystem,constraints)],constraints,paramsRing,QQpolRing));
-end
-
-unfiltered_systems=[OdebaseNode(sys.ID,true,true,1,1,sys.numSpecies,sys.param_polynomial_system,filter(l->!iszero(l),unique(sys.generic_polynomial_system)),[],sys.paramsRing,sys.polRing) for sys in odebaseSystems];
-
-for sys in odebaseSystems
-    # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
- #    so we look at the length of the list of monomials, check if its 1
-    if sum([length(collect(monomials(f)))==1 for f in sys.generic_polynomial_system])>0
-        rejects[sys.ID]="Contains monomial equation";
-        filter!(s->s.ID!=sys.ID,unfiltered_systems);
-    end
-
-    if length(unique(collect(Iterators.flatten([collect(monomials(f)) for f in sys.generic_polynomial_system]))))<length(sys.generic_polynomial_system)
-        rejects[sys.ID]="Macaulay matrix has more rows than columns";
-        filter!(s->s.ID!=sys.ID,unfiltered_systems);
-    end
-end
-
+include("imports.jl")
 # quick approximation for complexity. better would be to compute the upper bound on no. of fully supported minors
 ## uncomment the two lines below to filter out any systems with number of species>=upperBound
-#upperbound=89
 if @isdefined bound
 unfiltered_systems=filter(s->s.numSpecies==bound,unfiltered_systems);
 else
 unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
 end
 
-const systems=copy(unfiltered_systems);
+systems=copy(unfiltered_systems);
 
 # We return the 2n perturbations of degree 1 as well as the system itself
 function perturbSystem(system::OdebaseNode)
@@ -111,9 +44,12 @@ function matrix_from_system(pol_system)
     S = matrix_space(QQ, length(pol_system), length(mons))
     M_list=collect(Iterators.flatten(([[QQ(coeff(f,m)) for m in mons] for f in pol_system])))
     M=matrix(QQ,length(pol_system),length(mons),M_list)
+    if number_of_columns(M)<number_of_rows(M)
+        rk,M=rref(M)
+        M=matrix(QQ,[M[i,:] for i in 1:rk])
+    end
     return M
 end
-
 
 function is_det_zero(mat::QQMatrix)
     # returns "no method matching AbstractFloat"??
@@ -228,17 +164,18 @@ function data_dump_matrix(sys::OdebaseNode)
             fulsup=fully_supported_minors
         end
     else
-        fulsup=fully_supported_minors_nonsparse
+        fulsup=fully_supported_minors
     end
     
     for per in perturbations
-        println("Perturbation $i/$len")
+        #println("Perturbation $i/$len")
         mat=matrix_from_system(per[1])
-        println("Minors computed. Now filtering for zero determinants")
-        numRelevantMinors,numZeroMinors=fulsup(mat)
+        #println("Minors computed. Now filtering for zero determinants")
+        numRelevantMinors,numZeroRelevantMinors=fulsup(mat)
         numColumns=number_of_columns(mat)
-        numMinors=binomial(max(numColumns,number_of_rows(mat)),min(numColumns,number_of_rows(mat)))
-        row=[per[2],numRelevantMinors,numZeroMinors,numMinors,numColumns]
+        numMinors=binomial(numColumns,number_of_rows(mat))
+        numZeroMinors=numMinors-numRelevantMinors+numZeroRelevantMinors
+        row=[per[2],numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
         push!(matrix,row)
         i=i+1
     end
@@ -261,6 +198,8 @@ for sys in systems
     num=number_of_columns(matrix)
     i=1
     csv=[]
+    min=0
+    mincols=10000000
     for i in 1:number_of_rows(matrix)
         for j in 1:num
             push!(csv,"$(matrix[i,j])")
@@ -268,12 +207,18 @@ for sys in systems
                 push!(csv,",")
             end
         end
+        if matrix[i,5]<=mincols
+            mincols=matrix[i,5]
+            min=matrix[i,1]
+        end
         push!(csv,"
 ")
     end
     file=string(csv...)
-    open("odebase/src/$name-matrix.jl", "w") do io
+    open("odebase/out/$name-matrix.csv", "w") do io
         write(io, file)
     end
+    println(mincols)
+    println(min)
     count=count+1
 end
