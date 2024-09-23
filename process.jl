@@ -11,7 +11,6 @@ function perturbInfo(sys::Odebase.OdebaseNode)
     open(file, "r") do io
         lines=readlines(io)
         for line in lines
-            data=replace(line,r".*Elem"=>"")
             data=split(data,"],")
             data=vcat([String(data[1])*"]"],split(data[2],","))
             data=vcat([String(data[1])],parse.(Ref(Int),data[2:end]))

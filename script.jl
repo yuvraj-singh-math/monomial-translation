@@ -152,7 +152,7 @@ function fully_supported_minors_nonsparse_collection(mat::QQMatrix)
 end
 
 
-function data_dump_matrix(sys::OdebaseNode)
+function data_dump(sys::OdebaseNode)
     matrix=[]
     perturbations=perturbSystem(sys)
     i=1
@@ -175,11 +175,11 @@ function data_dump_matrix(sys::OdebaseNode)
         numColumns=number_of_columns(mat)
         numMinors=binomial(numColumns,number_of_rows(mat))
         numZeroMinors=numMinors-numRelevantMinors+numZeroRelevantMinors
-        row=[per[2],numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
+        row=["["*join(string.(per[2]), " ")*"]",numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
         push!(matrix,row)
         i=i+1
     end
-    matrix=Matrix(transpose(hcat(matrix...)))
+    #matrix=Matrix(transpose(hcat(matrix...)))
     return matrix
 end
 
@@ -194,22 +194,16 @@ for sys in systems
     local name=sys.ID
     print(name)
     println(", system $count/$total:")
-    matrix=data_dump_matrix(sys)
-    num=number_of_columns(matrix)
+    data=data_dump(sys)
+    num=length(data[1])
     i=1
     csv=[]
-    min=0
-    mincols=10000000
-    for i in 1:number_of_rows(matrix)
+    for result in data
         for j in 1:num
-            push!(csv,"$(matrix[i,j])")
+            push!(csv,"$(string(result[j]))")
             if j+1<=num
                 push!(csv,",")
             end
-        end
-        if matrix[i,5]<=mincols
-            mincols=matrix[i,5]
-            min=matrix[i,1]
         end
         push!(csv,"
 ")
@@ -218,7 +212,5 @@ for sys in systems
     open("odebase/out/$name-matrix.csv", "w") do io
         write(io, file)
     end
-    println(mincols)
-    println(min)
     count=count+1
 end
