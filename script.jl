@@ -224,7 +224,7 @@ for sys in systems
     open("odebase/out/$name-matrix.csv", "w") do io
         write(io, file)
     end
-    log=open("output.log","a,"a"")
+    log=open("output.log","a")
     println(log,"[$name:TOTAL]: $time")
     close(log)
     count=count+1

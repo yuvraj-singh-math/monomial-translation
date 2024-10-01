@@ -48,7 +48,6 @@ end
 
 for file in chems
     include(file);
-    if mass_bool
     randCoeff=rand_nonzero(length(gens(paramsRing)));
     QQpolRing,tup=polynomial_ring(QQ,["$x" for x in gens(polRing)]);
     phi=hom(polRing,QQpolRing,c->evaluate(c,randCoeff),gens(QQpolRing));
