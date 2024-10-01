@@ -8,6 +8,7 @@ if length(ARGS)==2
     global slow::Bool=parse(Bool,ARGS[2])
 end
 include("imports.jl")
+
 # quick approximation for complexity. better would be to compute the upper bound on no. of fully supported minors
 ## uncomment the two lines below to filter out any systems with number of species>=upperBound
 if @isdefined bound
@@ -15,6 +16,21 @@ unfiltered_systems=filter(s->s.numSpecies==bound,unfiltered_systems);
 else
 unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
 end
+
+unfiltered_systems=filter(s->s.numSpecies<=16,unfiltered_systems);
+function matrix_from_system(pol_system)
+    mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))
+    S = matrix_space(QQ, length(pol_system), length(mons))
+    M_list=collect(Iterators.flatten(([[QQ(coeff(f,m)) for m in mons] for f in pol_system])))
+    M=matrix(QQ,length(pol_system),length(mons),M_list)
+    if number_of_columns(M)<number_of_rows(M)
+        rk,M=rref(M)
+        M=matrix(QQ,[M[i,:] for i in 1:rk])
+    end
+    return M
+end
+
+unfiltered_systems=sort(unfiltered_systems,by= x->number_of_columns(matrix_from_system(x.generic_polynomial_system)));
 
 systems=copy(unfiltered_systems);
 
@@ -39,18 +55,6 @@ end
 
 
 # We work globally with QQMatrix since our generic_polynomial_system has rational coefficients
-function matrix_from_system(pol_system)
-    mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))
-    S = matrix_space(QQ, length(pol_system), length(mons))
-    M_list=collect(Iterators.flatten(([[QQ(coeff(f,m)) for m in mons] for f in pol_system])))
-    M=matrix(QQ,length(pol_system),length(mons),M_list)
-    if number_of_columns(M)<number_of_rows(M)
-        rk,M=rref(M)
-        M=matrix(QQ,[M[i,:] for i in 1:rk])
-    end
-    return M
-end
-
 function is_det_zero(mat::QQMatrix)
     # returns "no method matching AbstractFloat"??
     if number_of_columns(mat)==number_of_rows(mat)
@@ -155,6 +159,7 @@ end
 function data_dump(sys::OdebaseNode)
     matrix=[]
     perturbations=perturbSystem(sys)
+    name=sys.ID
     i=1
     len=length(perturbations)
     if @isdefined slow
@@ -171,12 +176,17 @@ function data_dump(sys::OdebaseNode)
         #println("Perturbation $i/$len")
         mat=matrix_from_system(per[1])
         #println("Minors computed. Now filtering for zero determinants")
+        time=@elapsed begin
         numRelevantMinors,numZeroRelevantMinors=fulsup(mat)
+        end
         numColumns=number_of_columns(mat)
         numMinors=binomial(numColumns,number_of_rows(mat))
         numZeroMinors=numMinors-numRelevantMinors+numZeroRelevantMinors
         row=["["*join(string.(per[2]), " ")*"]",numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
         push!(matrix,row)
+        log=open("output.log","a")
+        println(log,"[$name:$i/$len]: $time")
+        close(log)
         i=i+1
     end
     #matrix=Matrix(transpose(hcat(matrix...)))
@@ -194,7 +204,9 @@ for sys in systems
     local name=sys.ID
     print(name)
     println(", system $count/$total:")
+    time=@elapsed begin
     data=data_dump(sys)
+    end
     num=length(data[1])
     i=1
     csv=[]
@@ -212,5 +224,8 @@ for sys in systems
     open("odebase/out/$name-matrix.csv", "w") do io
         write(io, file)
     end
+    log=open("output.log","a,"a"")
+    println(log,"[$name:TOTAL]: $time")
+    close(log)
     count=count+1
 end
