@@ -1,7 +1,7 @@
 using Oscar;
 chems=readdir("odebase/src/odes",join=true)
 # these filters are mostly hacky workarounds
-chems=filter(filename->occursin(".jl",filename)&&(!occursin("odebase.jl",filename))&&(!occursin("rejects.jl",filename))&&(!occursin("matrix",filename))&&!occursin("#",filename),chems)
+chems=filter(filename->occursin(".jl",filename)&&(!occursin("00553",filename))&&(!occursin("00552",filename))&&(!occursin("00346",filename))&&(!occursin("0091",filename))&&(!occursin("00108",filename))&&(!occursin("odebase.jl",filename))&&(!occursin("rejects.jl",filename))&&(!occursin("matrix",filename))&&!occursin("#",filename),chems)
 
 struct OdebaseNode
     ID::String
@@ -48,13 +48,12 @@ end
 
 for file in chems
     include(file);
+    println(ID)
     randCoeff=rand_nonzero(length(gens(paramsRing)));
     QQpolRing,tup=polynomial_ring(QQ,["$x" for x in gens(polRing)]);
     phi=hom(polRing,QQpolRing,c->evaluate(c,randCoeff),gens(QQpolRing));
-    # now complains when passed name directly ?
     # we redefine polRing to be of rational type after the map
-    push!(odebaseSystems,OdebaseNode(ID,desc,length(Oscar.gens(polRing)),length(gens(paramsRing)),speciesNames,paramNames,irr,rev,def,rat,pol,mass_bool,paramsRing,QQpolRing,chemSystem,constraints,[],matrix(QQ,[[]]),matrix(QQ,[[]]),matrix(QQ,[[]]),[phi(x) for x in union(chemSystem,constraints)]));
-    end
+     push!(odebaseSystems,OdebaseNode(ID,desc,length(Oscar.gens(polRing)),length(gens(paramsRing)),speciesNames,paramNames,irr,rev,def,rat,pol,mass_bool,paramsRing,QQpolRing,chemSystem,constraints,[],matrix(QQ,[[]]),matrix(QQ,[[]]),matrix(QQ,[[]]),[phi(x) for x in union(chemSystem,constraints)]));
 end
 
 unfiltered_systems=[OdebaseNode(sys.ID,sys.description,sys.numSpecies,sys.numParams,sys.speciesNames,sys.paramNames,sys.numIrr,sys.numRev,sys.deficiency,sys.rational,sys.polynomial,sys.massAction,sys.paramsRing,sys.polRing,sys.ODEs,sys.constraints,sys.paramValues,sys.stoichMatrix,sys.reconStoichMatrix,sys.kineticMatrix,filter(x->!is_zero(x),unique(sys.generic_polynomial_system))) for sys in odebaseSystems];
