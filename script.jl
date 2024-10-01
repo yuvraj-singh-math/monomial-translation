@@ -9,6 +9,9 @@ if length(ARGS)==2
 end
 include("imports.jl")
 
+# filter out systems that we have already computed
+unfiltered_systems=filter(sys->!isfile("odebase/out/$(sys.ID)-matrix.csv"),unfiltered_systems)
+
 # quick approximation for complexity. better would be to compute the upper bound on no. of fully supported minors
 ## uncomment the two lines below to filter out any systems with number of species>=upperBound
 if @isdefined bound
