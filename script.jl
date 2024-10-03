@@ -10,7 +10,7 @@ end
 include("imports.jl")
 
 # filter out systems that we have already computed
-unfiltered_systems=filter(sys->!isfile("odebase/out/$(sys.ID)-matrix.csv"),unfiltered_systems)
+#unfiltered_systems=filter(sys->!isfile("odebase/out/$(sys.ID)-matrix.csv"),unfiltered_systems)
 
 # quick approximation for complexity. better would be to compute the upper bound on no. of fully supported minors
 ## uncomment the two lines below to filter out any systems with number of species>=upperBound
@@ -21,15 +21,14 @@ unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
 end
 
 unfiltered_systems=filter(s->s.numSpecies<=16,unfiltered_systems);
+unfiltered_systems=filter(s->s.massAction,unfiltered_systems);
 function matrix_from_system(pol_system)
     mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))
     S = matrix_space(QQ, length(pol_system), length(mons))
     M_list=collect(Iterators.flatten(([[QQ(coeff(f,m)) for m in mons] for f in pol_system])))
     M=matrix(QQ,length(pol_system),length(mons),M_list)
-    if number_of_columns(M)<number_of_rows(M)
-        rk,M=rref(M)
-        M=matrix(QQ,[M[i,:] for i in 1:rk])
-    end
+    rk,M=rref(M)
+    M=matrix(QQ,[M[i,:] for i in 1:rk])
     return M
 end
 
@@ -190,6 +189,7 @@ function data_dump(sys::OdebaseNode)
         log=open("output.log","a")
         println(log,"[$name:$i/$len]: $time")
         close(log)
+        println("[$name:$i/$len]: $time")
         i=i+1
     end
     #matrix=Matrix(transpose(hcat(matrix...)))
@@ -228,6 +228,7 @@ for sys in systems
         write(io, file)
     end
     log=open("output.log","a")
+    println("[$name:TOTAL]: $time")
     println(log,"[$name:TOTAL]: $time")
     close(log)
     count=count+1
