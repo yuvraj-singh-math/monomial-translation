@@ -1,3 +1,5 @@
 #+TITLE: MonomialTranslation.jl
 
 MonomialTranslation.jl is a module which makes available one function, ~greedy_vertex_alignment~, which takes a system of polynomials and a scoring function, and returns a system greedily optimising for this system.
+
+~script.jl~ outputs data in ~ODEbase/out~ describing all ODEbase models of species less than or equal to 16, and their degree 1 perturbations (multiplying a polynomial by $x_i^{\pm 1}$), in terms of the number of non-trivial (zero) minors, number of zero minors, and number of minors of the corresponding Macaulay matrix of the ODEs with generic parameters. To use it,  run ~julia script.jl~ and to only generate for models of a certain species, run ~julia script.jl NUM_SPECIES~.
