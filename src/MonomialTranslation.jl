@@ -120,7 +120,7 @@ function greedy_vertex_alignment(system::Vector,scoring_function,grad=false,ord=
         while scoring_function(matrix_from_system(perturbs[end]))>max_score
             system=perturbs[end]
             max_score=scoring_function(matrix_from_system(system))
-            unsorted_perturbs=perturbs
+            unsorted_perturbs=[j[1] for j in perturbSystem(system,polRing)]
             perturbs=sort(unsorted_perturbs,by = x->scoring_function(matrix_from_system(x)))
         end
     end
