@@ -1,4 +1,5 @@
 using Oscar;
+using OscarODEbase;
 using Combinatorics;
 # try to find better implementation
 using BipartiteMatching;
@@ -7,13 +8,11 @@ if length(ARGS)==2
     global bound::Int=parse(Int,ARGS[1])
     global slow::Bool=parse(Bool,ARGS[2])
 end
-include("imports.jl")
+if length(ARGS)==1
+    global bound::Int=parse(Int,ARGS[1])
+end
 
-# filter out systems that we have already computed
-#unfiltered_systems=filter(sys->!isfile("odebase/out/$(sys.ID)-matrix.csv"),unfiltered_systems)
-
-# quick approximation for complexity. better would be to compute the upper bound on no. of fully supported minors
-## uncomment the two lines below to filter out any systems with number of species>=upperBound
+unfiltered_systems=get_odebase_model.(ODEbaseModels)
 if @isdefined bound
 unfiltered_systems=filter(s->s.numSpecies==bound,unfiltered_systems);
 else
@@ -22,6 +21,7 @@ end
 
 unfiltered_systems=filter(s->s.numSpecies<=16,unfiltered_systems);
 unfiltered_systems=filter(s->s.massAction,unfiltered_systems);
+
 function matrix_from_system(pol_system)
     mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))
     S = matrix_space(QQ, length(pol_system), length(mons))
@@ -32,22 +32,23 @@ function matrix_from_system(pol_system)
     return M
 end
 
-unfiltered_systems=sort(unfiltered_systems,by= x->number_of_columns(matrix_from_system(x.generic_polynomial_system)));
+unfiltered_systems=sort(unfiltered_systems,by= x->binomial(number_of_columns(matrix_from_system(generic_polynomial_system(x)[1])),length(generic_polynomial_system(x)[1])));
 
 systems=copy(unfiltered_systems);
 
 # We return the 2n perturbations of degree 1 as well as the system itself
-function perturbSystem(system::OdebaseNode)
+function perturbSystem(system::ODEbaseModel)
     trans=[]
+    sys=generic_polynomial_system(system)[1]
     for m in gens(system.polRing)
-        for k in 1:length(system.generic_polynomial_system)
-            perturb=[m^Int(j==k) for j in 1:length(system.generic_polynomial_system)]
-            minperturb=[m^Int(j!=k) for j in 1:length(system.generic_polynomial_system)]
+        for k in 1:length(sys)
+            perturb=[m^Int(j==k) for j in 1:length(sys)]
+            minperturb=[m^Int(j!=k) for j in 1:length(sys)]
             push!(trans,perturb,minperturb)
         end
     end 
-    push!(trans,[1 for j in system.generic_polynomial_system])
-    explodedSystems=[[i.*system.generic_polynomial_system,i] for i in trans]
+    push!(trans,[1 for j in sys])
+    explodedSystems=[[i.*sys,i] for i in trans]
     return explodedSystems
 end
 
@@ -158,7 +159,7 @@ function fully_supported_minors_nonsparse_collection(mat::QQMatrix)
 end
 
 
-function data_dump(sys::OdebaseNode)
+function data_dump(sys::ODEbaseNode)
     matrix=[]
     perturbations=perturbSystem(sys)
     name=sys.ID
@@ -196,7 +197,7 @@ function data_dump(sys::OdebaseNode)
     return matrix
 end
 
-open("odebase/src/rejects.jl","w") do io
+open("ODEbase/out/rejects.jl","w") do io
     println(io,rejects)
 end
 
@@ -224,7 +225,7 @@ for sys in systems
 ")
     end
     file=string(csv...)
-    open("odebase/out/$name-matrix.csv", "w") do io
+    open("ODEbase/out/$name-matrix.csv", "w") do io
         write(io, file)
     end
     log=open("output.log","a")

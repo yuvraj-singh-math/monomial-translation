@@ -1,0 +1,12 @@
+name = "MonomialTranslation"
+uuid = "d60a32c5-bd3d-42c6-935c-093780c956bc"
+authors = ["yuvraj-singh-math <fdmm79@durham.ac.uk>"]
+version = "0.1.0"
+
+[deps]
+Oscar = "f1435218-dba5-11e9-1e4d-f1a5fab5fc13"
+OscarODEbase = "88401393-7360-4a14-b6f5-9be096107163"
+
+[compat]
+Oscar = "1.1.1"
+OscarODEbase = "0.1.0"

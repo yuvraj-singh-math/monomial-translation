@@ -1,0 +1,3 @@
+#+TITLE: MonomialTranslation.jl
+
+MonomialTranslation.jl is a module which makes available one function, ~greedy_vertex_alignment~, which takes a system of polynomials and a scoring function, and returns a system greedily optimising for this system.
