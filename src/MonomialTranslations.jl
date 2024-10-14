@@ -144,7 +144,6 @@ function produce_data(bound=16,restrict=false)
     count=1
     total=length(systems)
     for sys in systems
-        global count
         local name=sys.ID
         print(name)
         println(", system $count/$total:")
