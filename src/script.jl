@@ -13,11 +13,23 @@ using OscarODEbase;
 #end
 
 unfiltered_systems=get_odebase_model.(ODEbaseModels)
+
 unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
 #unfiltered_systems=filter(s->s.numSpecies<=bound,unfiltered_systems);
 
 #unfiltered_systems=filter(s->s.numSpecies<=16,unfiltered_systems);
 unfiltered_systems=filter(s->s.massAction,unfiltered_systems);
+rejects=Dict()
+for sys in unfiltered_systems
+    # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
+    # so we look at the length of the list of monomials, check if its 1
+    if sum([length(collect(monomials(f)))==1 for f in generic_polynomial_system(sys)[1]])>0
+        rejects[sys.ID]="Contains monomial equation";
+        filter!(s->s.ID!=sys.ID,unfiltered_systems);
+    end
+end
+
+
 
 function matrix_from_system(pol_system)
     mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))

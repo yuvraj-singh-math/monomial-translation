@@ -129,21 +129,6 @@ function greedy_vertex_alignment(system::Vector,scoring_function,grad=false,ord=
 end
 
 
-
-rejects=Dict()
-for sys in unfiltered_systems
-    # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
-    # so we look at the length of the list of monomials, check if its 1
-    if sum([length(collect(monomials(f)))==1 for f in generic_polynomial_system(sys)[1]])>0
-        rejects[sys.ID]="Contains monomial equation";
-        filter!(s->s.ID!=sys.ID,unfiltered_systems);
-    end
-end
-
-open("../out/rejects.jl","w") do io
-    println(io,rejects)
-end
-
 function produce_data(bound=16,restrict=false)
     include("$dir/src/script.jl")
     if restrict
@@ -153,6 +138,9 @@ function produce_data(bound=16,restrict=false)
     end
     mkpath("out")
     mkpath("out/perturb_info")
+    open("out/rejects.jl","w") do io
+        println(io,rejects)
+    end
     count=1
     total=length(systems)
     for sys in systems
