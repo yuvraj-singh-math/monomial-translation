@@ -1,8 +1,8 @@
 using Oscar;
 using OscarODEbase;
-using Combinatorics;
+#using Combinatorics;
 # try to find better implementation
-using BipartiteMatching;
+#using BipartiteMatching;
 
 if length(ARGS)==2
     global bound::Int=parse(Int,ARGS[1])
@@ -39,8 +39,8 @@ systems=copy(unfiltered_systems);
 # We return the 2n perturbations of degree 1 as well as the system itself
 function perturbSystem(system::ODEbaseModel)
     trans=[]
-    sys=generic_polynomial_system(system)[1]
-    for m in gens(system.polRing)
+    sys,newring=generic_polynomial_system(system)
+    for m in gens(newring)
         for k in 1:length(sys)
             perturb=[m^Int(j==k) for j in 1:length(sys)]
             minperturb=[m^Int(j!=k) for j in 1:length(sys)]
@@ -120,87 +120,107 @@ function number_of_fully_supported_minors(mat::QQMatrix)
     return length(fully_supported_minors(mat))
 end
 
-function is_minor_fully_supported(submat::Vector{Vector{QQFieldElem}})
-    dimen=length(submat)
-    adj_matrix=BitArray{2}(hcat([[!is_zero(submat[i][j]) for i in 1:dimen] for j in 1:dimen]...))
-    a,b=findmaxcardinalitybipartitematching(adj_matrix)
+#function is_minor_fully_supported(submat::Vector{Vector{QQFieldElem}})
+#   dimen=length(submat)
+#   adj_matrix=BitArray{2}(hcat([[!is_zero(submat[i][j]) for i in 1:dimen] for j in 1:dimen]...))
+#   a,b=findmaxcardinalitybipartitematching(adj_matrix)
     # b is a bitvector where the i-th component is true (resp. false) if the i-th row is (resp. is not) matched
-    return prod(b)
-end
+#   return prod(b)
+#nd
 
-function fully_supported_minors_nonsparse(mat::QQMatrix)
-    cols=[mat[:,i] for i in 1:number_of_columns(mat)];
-    allminors=Combinatorics.combinations(cols,number_of_rows(mat));
-    allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
-    zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
-    # try to get around having to collect
-    numallminors=0
-    numzerominors=0
-    for x in allminors
-        numallminors=numallminors+1
-    end
-    for x in zerominors
-        numzerominors=numzerominors+1
-    end
-    return [numallminors,numzerominors]
-end
+#function fully_supported_minors_nonsparse(mat::QQMatrix)
+    #cols=[mat[:,i] for i in 1:number_of_columns(mat)];
+    #allminors=Combinatorics.combinations(cols,number_of_rows(mat));
+    #allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
+    #zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
+    ## try to get around having to collect
+    #numallminors=0
+    #numzerominors=0
+    #for x in allminors
+        #numallminors=numallminors+1
+    #end
+    #for x in zerominors
+        #numzerominors=numzerominors+1
+    #end
+    #return [numallminors,numzerominors]
+#end
 
-function fully_supported_minors_nonsparse_collection(mat::QQMatrix)
-    cols=[mat[:,i] for i in 1:number_of_columns(mat)];
-    allminors=Combinatorics.combinations(cols,number_of_rows(mat));
-    allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
-    zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
-    # try to get around having to collect
-    numallminors=length(collect(allminors))
-    allminors=nothing
-    numzerominors=length(collect(zerominors))
-    zerominors=nothing
-    return [numallminors,numzerominors]
-end
+#function fully_supported_minors_nonsparse_collection(mat::QQMatrix)
+    #cols=[mat[:,i] for i in 1:number_of_columns(mat)];
+    #allminors=Combinatorics.combinations(cols,number_of_rows(mat));
+    #allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
+    #zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
+    ## try to get around having to collect
+    #numallminors=length(collect(allminors))
+    #allminors=nothing
+    #numzerominors=length(collect(zerominors))
+    #zerominors=nothing
+    #return [numallminors,numzerominors]
+#end
 
 
-function data_dump(sys::ODEbaseNode)
+function data_dump(sys::ODEbaseModel)
     matrix=[]
     perturbations=perturbSystem(sys)
     name=sys.ID
     i=1
     len=length(perturbations)
-    if @isdefined slow
-        if slow
-            fulsup=fully_supported_minors_nonsparse
-        else
-            fulsup=fully_supported_minors
-        end
-    else
-        fulsup=fully_supported_minors
-    end
+    #if @isdefined slow
+        #if slow
+            #fulsup=fully_supported_minors_nonsparse
+        #else
+            #fulsup=fully_supported_minors
+        #end
+    #else
+    fulsup=fully_supported_minors
+    #end
     
     for per in perturbations
         #println("Perturbation $i/$len")
         mat=matrix_from_system(per[1])
         #println("Minors computed. Now filtering for zero determinants")
+        working=true
         time=@elapsed begin
-        numRelevantMinors,numZeroRelevantMinors=fulsup(mat)
+        try
+            numRelevantMinors,numZeroRelevantMinors=fulsup(mat)
+        catch error
+            println("$name takes too much memory.")
+            working=false
         end
-        numColumns=number_of_columns(mat)
-        numMinors=binomial(numColumns,number_of_rows(mat))
-        numZeroMinors=numMinors-numRelevantMinors+numZeroRelevantMinors
-        row=["["*join(string.(per[2]), " ")*"]",numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
-        push!(matrix,row)
-        log=open("output.log","a")
-        println(log,"[$name:$i/$len]: $time")
-        close(log)
-        println("[$name:$i/$len]: $time")
-        i=i+1
+        end
+        if working
+            numColumns=number_of_columns(mat)
+            numMinors=binomial(numColumns,number_of_rows(mat))
+            numZeroMinors=numMinors-numRelevantMinors+numZeroRelevantMinors
+            row=["["*join(string.(per[2]), " ")*"]",numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
+            push!(matrix,row)
+            log=open("out/output.log","a")
+            println(log,"[$name:$i/$len]: $time")
+            close(log)
+            println("[$name:$i/$len]: $time")
+            i=i+1
+            end
     end
     #matrix=Matrix(transpose(hcat(matrix...)))
     return matrix
+end
+
+rejects=Dict()
+for sys in unfiltered_systems
+    # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
+    # so we look at the length of the list of monomials, check if its 1
+    if sum([length(collect(monomials(f)))==1 for f in generic_polynomial_system(sys)[1]])>0
+        rejects[sys.ID]="Contains monomial equation";
+        filter!(s->s.ID!=sys.ID,unfiltered_systems);
+    end
 end
 
 open("ODEbase/out/rejects.jl","w") do io
     println(io,rejects)
 end
 
+mkpath("out")
+mkpath("out/perturb_info")
 count=1
 total=length(systems)
 for sys in systems
@@ -225,10 +245,10 @@ for sys in systems
 ")
     end
     file=string(csv...)
-    open("ODEbase/out/$name-matrix.csv", "w") do io
+    open("out/perturb_info/$name-matrix.csv", "w") do io
         write(io, file)
     end
-    log=open("output.log","a")
+    log=open("out/output.log","a")
     println("[$name:TOTAL]: $time")
     println(log,"[$name:TOTAL]: $time")
     close(log)

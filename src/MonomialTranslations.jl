@@ -1,4 +1,4 @@
-module MonomialTranslation
+module MonomialTranslations
 export greedy_vertex_alignment
 using Oscar;
 #using OscarODEbase;
