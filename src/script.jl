@@ -4,22 +4,19 @@ using OscarODEbase;
 # try to find better implementation
 #using BipartiteMatching;
 
-if length(ARGS)==2
-    global bound::Int=parse(Int,ARGS[1])
-    global slow::Bool=parse(Bool,ARGS[2])
-end
-if length(ARGS)==1
-    global bound::Int=parse(Int,ARGS[1])
-end
+#if length(ARGS)==2
+    #global bound::Int=parse(Int,ARGS[1])
+    #global slow::Bool=parse(Bool,ARGS[2])
+#end
+#if length(ARGS)==1
+    #global bound::Int=parse(Int,ARGS[1])
+#end
 
 unfiltered_systems=get_odebase_model.(ODEbaseModels)
-if @isdefined bound
-unfiltered_systems=filter(s->s.numSpecies==bound,unfiltered_systems);
-else
 unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
-end
+#unfiltered_systems=filter(s->s.numSpecies<=bound,unfiltered_systems);
 
-unfiltered_systems=filter(s->s.numSpecies<=16,unfiltered_systems);
+#unfiltered_systems=filter(s->s.numSpecies<=16,unfiltered_systems);
 unfiltered_systems=filter(s->s.massAction,unfiltered_systems);
 
 function matrix_from_system(pol_system)
@@ -31,8 +28,6 @@ function matrix_from_system(pol_system)
     M=matrix(QQ,[M[i,:] for i in 1:rk])
     return M
 end
-
-unfiltered_systems=sort(unfiltered_systems,by= x->binomial(number_of_columns(matrix_from_system(generic_polynomial_system(x)[1])),length(generic_polynomial_system(x)[1])));
 
 systems=copy(unfiltered_systems);
 
@@ -174,7 +169,6 @@ function data_dump(sys::ODEbaseModel)
     #else
     fulsup=fully_supported_minors
     #end
-    
     for per in perturbations
         #println("Perturbation $i/$len")
         mat=matrix_from_system(per[1])
@@ -194,7 +188,7 @@ function data_dump(sys::ODEbaseModel)
             numZeroMinors=numMinors-numRelevantMinors+numZeroRelevantMinors
             row=["["*join(string.(per[2]), " ")*"]",numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
             push!(matrix,row)
-            log=open("../out/output.log","a")
+            log=open("out/output.log","a")
             println(log,"[$name:$i/$len]: $time")
             close(log)
             println("[$name:$i/$len]: $time")
@@ -203,54 +197,4 @@ function data_dump(sys::ODEbaseModel)
     end
     #matrix=Matrix(transpose(hcat(matrix...)))
     return matrix
-end
-
-rejects=Dict()
-for sys in unfiltered_systems
-    # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
-    # so we look at the length of the list of monomials, check if its 1
-    if sum([length(collect(monomials(f)))==1 for f in generic_polynomial_system(sys)[1]])>0
-        rejects[sys.ID]="Contains monomial equation";
-        filter!(s->s.ID!=sys.ID,unfiltered_systems);
-    end
-end
-
-open("../out/rejects.jl","w") do io
-    println(io,rejects)
-end
-
-mkpath("out")
-mkpath("out/perturb_info")
-count=1
-total=length(systems)
-for sys in systems
-    global count
-    local name=sys.ID
-    print(name)
-    println(", system $count/$total:")
-    time=@elapsed begin
-    data=data_dump(sys)
-    end
-    num=length(data[1])
-    i=1
-    csv=[]
-    for result in data
-        for j in 1:num
-            push!(csv,"$(string(result[j]))")
-            if j+1<=num
-                push!(csv,",")
-            end
-        end
-        push!(csv,"
-")
-    end
-    file=string(csv...)
-    open("../out/perturb_info/$name-matrix.csv", "w") do io
-        write(io, file)
-    end
-    log=open("../out/output.log","a")
-    println("[$name:TOTAL]: $time")
-    println(log,"[$name:TOTAL]: $time")
-    close(log)
-    count=count+1
 end
