@@ -168,7 +168,7 @@ function data_dump(sys::ODEbaseModel)
         #println("Minors computed. Now filtering for zero determinants")
         working=true
         try
-            time=@elapsed begin
+            global time=@elapsed begin
                 global numRelevantMinors,numZeroRelevantMinors=fulsup(mat)
             end
         catch e
