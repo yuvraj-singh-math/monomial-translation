@@ -194,7 +194,7 @@ function data_dump(sys::ODEbaseModel)
             numZeroMinors=numMinors-numRelevantMinors+numZeroRelevantMinors
             row=["["*join(string.(per[2]), " ")*"]",numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
             push!(matrix,row)
-            log=open("out/output.log","a")
+            log=open("../out/output.log","a")
             println(log,"[$name:$i/$len]: $time")
             close(log)
             println("[$name:$i/$len]: $time")
@@ -215,7 +215,7 @@ for sys in unfiltered_systems
     end
 end
 
-open("ODEbase/out/rejects.jl","w") do io
+open("../out/rejects.jl","w") do io
     println(io,rejects)
 end
 
@@ -245,10 +245,10 @@ for sys in systems
 ")
     end
     file=string(csv...)
-    open("out/perturb_info/$name-matrix.csv", "w") do io
+    open("../out/perturb_info/$name-matrix.csv", "w") do io
         write(io, file)
     end
-    log=open("out/output.log","a")
+    log=open("../out/output.log","a")
     println("[$name:TOTAL]: $time")
     println(log,"[$name:TOTAL]: $time")
     close(log)

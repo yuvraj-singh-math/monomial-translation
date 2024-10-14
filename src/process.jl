@@ -6,7 +6,7 @@ Oscar.set_seed!(13371337)
 # limitations: returns the perturbation as a string
 function perturbInfo(sys::OdebaseModel)
     location=sys.ID
-    file="odebase/out/$location-matrix.csv"
+    file="../out/perturb_info/$location-matrix.csv"
     if !isfile(file)
         error("System has not been analysed")
     end
@@ -25,7 +25,7 @@ end
 
 unfiltered_systems=get_odebase_system.(odebaseSystems);
 
-systems=filter(x->isfile("odebase/out/$(x.ID)-matrix.csv"),unfiltered_systems);
+systems=filter(x->isfile("../out/perturb_info/$(x.ID)-matrix.csv"),unfiltered_systems);
 systems=filter(x->x.massAction,systems);
 
 # 1        2                                          3                                             4                              5                       6
