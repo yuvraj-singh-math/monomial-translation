@@ -1,6 +1,6 @@
 module MonomialTranslations
 export greedy_vertex_alignment
-export data_dump
+export produce_data
 using Oscar;
 const dir = Base.pkgdir(MonomialTranslations)
 
