@@ -12,24 +12,6 @@ using OscarODEbase;
     #global bound::Int=parse(Int,ARGS[1])
 #end
 
-unfiltered_systems=get_odebase_model.(ODEbaseModels)
-
-unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
-#unfiltered_systems=filter(s->s.numSpecies<=bound,unfiltered_systems);
-
-#unfiltered_systems=filter(s->s.numSpecies<=16,unfiltered_systems);
-unfiltered_systems=filter(s->s.massAction,unfiltered_systems);
-rejects=Dict()
-for sys in unfiltered_systems
-    # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
-    # so we look at the length of the list of monomials, check if its 1
-    if sum([length(collect(monomials(f)))==1 for f in generic_polynomial_system(sys)[1]])>0
-        rejects[sys.ID]="Contains monomial equation";
-        filter!(s->s.ID!=sys.ID,unfiltered_systems);
-    end
-end
-
-
 
 function matrix_from_system(pol_system)
     mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))
@@ -41,7 +23,6 @@ function matrix_from_system(pol_system)
     return M
 end
 
-systems=copy(unfiltered_systems);
 
 # We return the 2n perturbations of degree 1 as well as the system itself
 function perturbSystem(system::ODEbaseModel)
@@ -186,13 +167,13 @@ function data_dump(sys::ODEbaseModel)
         mat=matrix_from_system(per[1])
         #println("Minors computed. Now filtering for zero determinants")
         working=true
-        time=@elapsed begin
         try
-            numRelevantMinors,numZeroRelevantMinors=fulsup(mat)
-        catch error
+            time=@elapsed begin
+                global numRelevantMinors,numZeroRelevantMinors=fulsup(mat)
+            end
+        catch e
             println("$name takes too much memory.")
             working=false
-        end
         end
         if working
             numColumns=number_of_columns(mat)

@@ -2,9 +2,31 @@ module MonomialTranslations
 export greedy_vertex_alignment
 export produce_data
 using Oscar;
+using OscarODEbase;
 const dir = Base.pkgdir(MonomialTranslations)
 
 score(mat)=-number_of_columns(mat)
+
+unfiltered_systems=get_odebase_model.(ODEbaseModels)
+
+unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
+#unfiltered_systems=filter(s->s.numSpecies<=bound,unfiltered_systems);
+
+#unfiltered_systems=filter(s->s.numSpecies<=16,unfiltered_systems);
+unfiltered_systems=filter(s->s.massAction,unfiltered_systems);
+rejects=Dict()
+for sys in unfiltered_systems
+    # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
+    # so we look at the length of the list of monomials, check if its 1
+    if sum([length(collect(monomials(f)))==1 for f in generic_polynomial_system(sys)[1]])>0
+        rejects[sys.ID]="Contains monomial equation";
+        filter!(s->s.ID!=sys.ID,unfiltered_systems);
+    end
+end
+
+systems=copy(unfiltered_systems);
+
+include("script.jl")
 
 #all_models=get_odebase_model.(ODEbaseModels)
 #systems=generic_polynomial_system.(filter(x->x.massAction,get_odebase_model.(all_models)))
@@ -130,7 +152,6 @@ end
 
 
 function produce_data(bound=16,restrict=false)
-    include("$dir/src/script.jl")
     if restrict
         filter!(x->x.numSpecies==bound,systems)
     else
@@ -161,10 +182,10 @@ function produce_data(bound=16,restrict=false)
                 end
             end
             push!(csv,"
-    ")
+")
         end
         file=string(csv...)
-        open("../out/perturb_info/$name-matrix.csv", "w") do io
+        open("out/perturb_info/$name-matrix.csv", "w") do io
             write(io, file)
         end
         log=open("out/output.log","a")
@@ -174,4 +195,5 @@ function produce_data(bound=16,restrict=false)
         count=count+1
     end
 end
+produce_data()
 end
