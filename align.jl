@@ -8,10 +8,9 @@ Oscar.set_seed!(13371337)
 score(mat)=-number_of_columns(mat);
 
 systems=get_odebase_model.(ODEbaseModels);
+
 systems=filter(x->x.massAction,systems);
 sort!(systems,by=x->x.numSpecies);
-systems=filter(x->x.numSpecies<=16,systems);
-
 
 function matrix_from_system(pol_system)
     mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))

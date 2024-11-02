@@ -1,17 +1,5 @@
 using Oscar;
 using OscarODEbase;
-#using Combinatorics;
-# try to find better implementation
-#using BipartiteMatching;
-
-#if length(ARGS)==2
-    #global bound::Int=parse(Int,ARGS[1])
-    #global slow::Bool=parse(Bool,ARGS[2])
-#end
-#if length(ARGS)==1
-    #global bound::Int=parse(Int,ARGS[1])
-#end
-
 
 function matrix_from_system(pol_system)
     mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))
@@ -28,6 +16,8 @@ end
 function perturbSystem(system::ODEbaseModel)
     trans=[]
     sys,newring=generic_polynomial_system(system)
+    # remove 0 polynomials
+    filter!(x->!iszero(x),sys)
     for m in gens(newring)
         for k in 1:length(sys)
             perturb=[m^Int(j==k) for j in 1:length(sys)]
@@ -180,14 +170,14 @@ function data_dump(sys::ODEbaseModel)
             numMinors=binomial(numColumns,number_of_rows(mat))
             numZeroMinors=numMinors-numRelevantMinors+numZeroRelevantMinors
             row=["["*join(string.(per[2]), " ")*"]",numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
+            println(row)
             push!(matrix,row)
             log=open("out/output.log","a")
             println(log,"[$name:$i/$len]: $time")
             close(log)
             println("[$name:$i/$len]: $time")
             i=i+1
-            end
+        end
     end
-    #matrix=Matrix(transpose(hcat(matrix...)))
     return matrix
 end

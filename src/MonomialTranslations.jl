@@ -7,31 +7,33 @@ const dir = Base.pkgdir(MonomialTranslations)
 
 score(mat)=-number_of_columns(mat)
 
-unfiltered_systems=get_odebase_model.(ODEbaseModels)
+function __init__()
+	unfiltered_systems=get_odebase_model.(ODEbaseModels)
+	unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
+	unfiltered_systems=filter(s->s.massAction,unfiltered_systems);
+	global rejects=Dict()
+	for sys in unfiltered_systems
+    # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
+    # so we look at the length of the list of monomials, check if its 1
+	    if sum([length(collect(monomials(f)))==1 for f in generic_polynomial_system(sys)[1]])>0
+		rejects[sys.ID]="Contains monomial equation";
+		filter!(s->s.ID!=sys.ID,unfiltered_systems);
+	    end
+	end
+	global systems=copy(unfiltered_systems);
+end
 
-unfiltered_systems=sort(unfiltered_systems,by= x->x.numSpecies);
+
 #unfiltered_systems=filter(s->s.numSpecies<=bound,unfiltered_systems);
 
 #unfiltered_systems=filter(s->s.numSpecies<=16,unfiltered_systems);
-unfiltered_systems=filter(s->s.massAction,unfiltered_systems);
-rejects=Dict()
-for sys in unfiltered_systems
-    # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
-    # so we look at the length of the list of monomials, check if its 1
-    if sum([length(collect(monomials(f)))==1 for f in generic_polynomial_system(sys)[1]])>0
-        rejects[sys.ID]="Contains monomial equation";
-        filter!(s->s.ID!=sys.ID,unfiltered_systems);
-    end
-end
-
-systems=copy(unfiltered_systems);
-
 include("script.jl")
 
 #all_models=get_odebase_model.(ODEbaseModels)
 #systems=generic_polynomial_system.(filter(x->x.massAction,get_odebase_model.(all_models)))
 
 # Could also work over finite field to make det computations faster (as all we care about is whether a determinant is zero) TODO
+
 function randbinom(arr::Vector,num::Int)
     selection=Set()
     while length(selection)<num
@@ -49,24 +51,6 @@ function random_minors(mat::QQMatrix,num::Int)
     end
     minorszero=sum(is_det_zero.([matrix(QQ,hcat(m...)) for m in submats]))
 end
-function is_det_zero(mat::QQMatrix)
-    if number_of_columns(mat)==number_of_rows(mat)
-        return !(rank(mat)==number_of_rows(mat))
-    end
-    error("not square")
-end
-
-function matrix_from_system(pol_system)
-    mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))
-    S = matrix_space(QQ, length(pol_system), length(mons))
-    M_list=collect(Iterators.flatten(([[QQ(coeff(f,m)) for m in mons] for f in pol_system])))
-    M=matrix(QQ,length(pol_system),length(mons),M_list)
-    if number_of_columns(M)<number_of_rows(M)
-        rk,M=rref(M)
-        M=matrix(QQ,[M[i,:] for i in 1:rk])
-    end
-    return M
-end
 
 function vertices_of_function(f)
     points=collect(Oscar.vertices(newton_polytope(f)))
@@ -74,6 +58,7 @@ function vertices_of_function(f)
     return points
 end
 
+# To deal with generic polynomial systems
 function perturbSystem(system::Vector,polring)
     trans=[]
     for m in gens(polring)
@@ -195,5 +180,4 @@ function produce_data(bound=16,restrict=false)
         count=count+1
     end
 end
-produce_data()
 end

@@ -1,12 +1,18 @@
 using Oscar;
-using OscarOdebase;
-Random.seed!(13371337)
-Oscar.set_seed!(13371337)
+using OscarODEbase;
 
-# limitations: returns the perturbation as a string
-function perturbInfo(sys::OdebaseModel)
+if length(ARGS)==1
+    global directory=ARGS[1]
+end
+
+function perturbInfo(sys::ODEbaseModel)
     location=sys.ID
-    file="../out/perturb_info/$location-matrix.csv"
+    if @isdefined directory
+        file="$directory/$location-matrix.csv"
+    else
+        file="out/perturb_info/$location-matrix.csv"
+    end
+    
     if !isfile(file)
         error("System has not been analysed")
     end
@@ -23,9 +29,9 @@ function perturbInfo(sys::OdebaseModel)
     return list
 end
 
-unfiltered_systems=get_odebase_system.(odebaseSystems);
+unfiltered_systems=get_odebase_model.(ODEbaseModels);
 
-systems=filter(x->isfile("../out/perturb_info/$(x.ID)-matrix.csv"),unfiltered_systems);
+systems=filter(x->isfile("out/perturb_info/$(x.ID)-matrix.csv"),unfiltered_systems)
 systems=filter(x->x.massAction,systems);
 
 # 1        2                                          3                                             4                              5                       6
@@ -42,24 +48,52 @@ global result=[]
 
 for sys in systems
     data=perturbInfo(sys)
-    up=max([score1(datum) for datum in data[1:end]]...)
-    #original=data[end]
+    up=score1(data[end])
     filtered=filter(x->score1(x)==up,data)
-    wins=[score(data[end])>max([score(datum) for datum in filtered]...) for score in scores]
-    if !(data[end] in filtered)
-        println("$(sys.ID) bad")
-    end
-    #temp=[length(filter(x->score(x)>=score(data[end]),filtered)) for score in scores]
-    #println(temp)
     if length(filtered)>1
         println(sys.ID)
-        for datum in data
-            if score1(datum)==up
-                println(datum)
-            end
+        for f in filtered
+            println([sc(f) for sc in scores])
         end
-        println(wins)
-        push!(result,wins)
     end
 end
 
+for sys in systems
+    data=perturbInfo(sys)
+    #up=max([score1(datum) for datum in data[1:end]]...)
+    #original=data[end]
+    #filtered=filter(x->score1(x)==up,data)
+    wins=[Int(score(data[end])>=max([score(datum) for datum in data]...)) for score in scores]
+    #if !(data[end] in filtered)
+        #println("$(sys.ID) bad")
+    #end
+    #temp=[length(filter(x->score(x)>=score(data[end]),filtered)) for score in scores]
+    #println(temp)
+    #if length(filtered)>1
+        #println(sys.ID)
+        #for datum in data
+            #if score1(datum)==up
+                #println(datum)
+            #end
+        #end
+        #println(wins)
+	push!(result,vcat([sys.ID],wins))
+	println(wins)
+    #end
+end
+
+csv=[]
+for datum in result
+    for j in 1:length(datum)
+        push!(csv,"$(string(datum[j]))")
+        if j+1<=length(datum)
+            push!(csv,",")
+        end
+    end
+    push!(csv,"
+")
+end
+file=string(csv...);
+open("score-results.csv", "w") do io
+    write(io, file)
+end
