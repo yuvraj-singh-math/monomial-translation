@@ -1,7 +1,7 @@
 using Oscar;
 using OscarODEbase;
 using Random;
-using MonomialTranslation;
+using MonomialTranslations;
 Random.seed!(13371337)
 Oscar.set_seed!(13371337)
 
@@ -32,12 +32,14 @@ end
 
 function testing(syss::Vector,lazy=true)
     results=[]
+    stats=[]
     for sys in syss
         println(sys.ID)
         gen_sys,newring=generic_polynomial_system(sys)
         filter!(x->!iszero(x),gen_sys)
         gen_sys=unique(gen_sys)
         lowerbound=score(matrix_from_system(gen_sys))
+	results_sys=[]
         for x in 1:10
             per=bigperturb(gen_sys,newring)
             worstbound=score(matrix_from_system(per))
@@ -45,15 +47,36 @@ function testing(syss::Vector,lazy=true)
             midbound=score(matrix_from_system(modsys))
             println([-lowerbound,-midbound,-worstbound])
             push!(results,[sys.ID,-lowerbound,-midbound,-worstbound])
+            push!(results_sys,[sys.ID,-lowerbound,-midbound,-worstbound])
         end
+	average=sum([result[3] for result in results])/10
+	max=results[1][3]
+	min=-lowerbound
+	push!(stats,[sys.ID,min,average,max])
     end
-    return results
+    return results,stats
 end
 
-outputdata=testing(systems);
+outputdata,stats=testing(systems);
 
+global csv_raw=[]
 global csv=[]
 for result in outputdata
+    for j in 1:length(result)
+        push!(csv_raw,"$(string(result[j]))")
+        if j+1<=length(result)
+            push!(csv_raw,",")
+        end
+    end
+    push!(csv_raw,"
+")
+end
+file_raw=string(csv_raw...);
+open("alignment-results_raw.csv", "w") do io
+    write(io, file_raw)
+end
+
+for result in stats
     for j in 1:length(result)
         push!(csv,"$(string(result[j]))")
         if j+1<=length(result)

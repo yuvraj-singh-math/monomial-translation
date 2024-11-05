@@ -505,9 +505,9 @@ version = "1.1.1"
 
 [[deps.OscarODEbase]]
 deps = ["Oscar"]
-git-tree-sha1 = "a4c478b96ff97e9fbecc0cc2c387e8231d66cd64"
+git-tree-sha1 = "c0ef6cc522d5478c6bbd3c64273a5acb6421b814"
 repo-rev = "master"
-repo-url = "git@github.com:yuvraj-singh-math/julia-odebase.git"
+repo-url = "https://github.com/yuvraj-singh-math/julia-odebase.git#master"
 uuid = "88401393-7360-4a14-b6f5-9be096107163"
 version = "0.1.0"
 
