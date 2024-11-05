@@ -170,7 +170,6 @@ function data_dump(sys::ODEbaseModel)
             numMinors=binomial(numColumns,number_of_rows(mat))
             numZeroMinors=numMinors-numRelevantMinors+numZeroRelevantMinors
             row=["["*join(string.(per[2]), " ")*"]",numRelevantMinors,numZeroRelevantMinors,numZeroMinors,numMinors,numColumns]
-            println(row)
             push!(matrix,row)
             log=open("out/output.log","a")
             println(log,"[$name:$i/$len]: $time")
