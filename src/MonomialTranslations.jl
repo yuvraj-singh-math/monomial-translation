@@ -5,7 +5,6 @@ using Oscar;
 using OscarODEbase;
 const dir = Base.pkgdir(MonomialTranslations)
 
-score(mat)=-number_of_columns(mat)
 
 function __init__()
 	unfiltered_systems=get_odebase_model.(ODEbaseModels)
@@ -73,75 +72,51 @@ function perturbSystem(system::Vector,polring)
     return explodedSystems
 end
 
-function greedy_vertex_alignment(system::Vector,scoring_function,grad=false,ord=false,shuff=false,tiebreaker=true)
-    polRing=parent(system[1])
-    points=[ vertices_of_function(f) for f in system]
-    perm=sortperm(points,rev=ord)
-    if !shuff
-        # add lex tiebreaker
-        points=points[perm]
-        system=system[perm]
-    end
-    for i in 1:(length(system)-1)
-        # Here we deal *only* with the exponent vectors
-        max_monomial=[0 for i in 1:length(system)]
-        max_matrix=matrix_from_system(system)
-        max_score=scoring_function(max_matrix)
-        for v1 in union(points[1:i]...)
-            for v2 in points[i+1]
-                # we adjust the difference to ensure it is positive
-                # and translate every other polynomial accordingly
-                lowest_term=abs(sort(v2-v1)[1])
-                monomial=prod(gens(polRing).^(v2-v1+[lowest_term for j in v2]))
-                mod_system=system[:]
-                deleteat!(mod_system,1:i)
-                global_translation=prod(gens(polRing).^[lowest_term for j in v2])
-                mod_system=[f*global_translation for f in mod_system]
-                push!(mod_system,([monomial for j in 1:i].*system[1:i])...)
-                mat=matrix_from_system(mod_system)
-                score=scoring_function(mat)
-                if score>max_score
-                    max_score=score
-                    max_monomial=[[lowest_term for j in v2]+Int(i>=j)*(v2-v1) for j in 1:length(system)]
-                    max_matrix=matrix_from_system(system.*[prod(gens(polRing).^m) for m in max_monomial])
-                elseif score==max_score && tiebreaker
-                    # computing all the minors is too intensive so sample uniformly
-                    bound=100
-                    if random_minors(mat,bound)>random_minors(max_matrix,bound)
-                        max_matrix=mat
-                        max_score=score
-                        max_monomial=[[lowest_term for j in v2]+Int(i>=j)*(v2-v1) for j in 1:length(system)]
-                    end
-                end
+function integer_stuff(points::Vector{Vector{Vector{Int}}},lensys::Int,ind::Int)
+    # Here we deal *only* with the exponent vectors
+    max_monomial=[0 for j in 1:lensys]
+    max_score=-length(union(points...))
+    for v1 in union(points[1:ind]...)
+        for v2 in points[ind+1]
+            # we adjust the difference to ensure it is positive
+            # and translate every other polynomial accordingly
+            lowest_term=abs(sort(v2-v1)[1])
+            monomial=[[lowest_term for j in v2]+Int(ind>=j)*(v2-v1) for j in 1:lensys]
+            mod_points=[[mon+monomial[j] for mon in points[j]] for j in 1:length(points)]
+            # union of the points is the same as number of monomials, which is the same as number of columns of the Macaulay matrix
+            score=-length(union(mod_points...))
+            if score>max_score
+                max_score=score
+                max_monomial=[[lowest_term for j in v2]+Int(ind>=j)*(v2-v1) for j in 1:lensys]
             end
         end
+    end
+    return max_monomial
+end
+
+# ,grad::Bool=false,ord::Bool=false,shuff::Bool=false,tiebreaker::Bool=true
+function greedy_vertex_alignment(system::Vector)
+    polRing=parent(system[1])
+    points=[ vertices_of_function(f) for f in system]
+    perm=sortperm(points)
+    points=points[perm]
+    system=system[perm]
+    for i in 1:(length(system)-1)
+        max_monomial=integer_stuff(points,length(system),i)
         system=system.*[prod(gens(polRing).^m) for m in max_monomial]
         points=[ vertices_of_function(f) for f in system]
-        perm=sortperm(points,rev=ord)
-        points=points[perm]
-    end
-    # do a local maxima check TEST
-    if grad
-        perturbs=[j[1] for j in perturbSystem(system,polRing)]
-        sort!(perturbs,by = x->scoring_function(matrix_from_system(x)))
-        max_score=scoring_function(matrix_from_system(system))
-        while scoring_function(matrix_from_system(perturbs[end]))>max_score
-            system=perturbs[end]
-            max_score=scoring_function(matrix_from_system(system))
-            unsorted_perturbs=[j[1] for j in perturbSystem(system,polRing)]
-            perturbs=sort(unsorted_perturbs,by = x->scoring_function(matrix_from_system(x)))
-        end
     end
     return system
 end
 
 
-function produce_data(bound=16,restrict=false)
+function produce_data(bound=16,restrict=false;start=1)
     if restrict
         filter!(x->x.numSpecies==bound,systems)
     else
         filter!(x->x.numSpecies<=bound,systems)
     end
+    systems=systems[start:end]
     mkpath("out")
     mkpath("out/perturb_info")
     open("out/rejects.jl","w") do io
