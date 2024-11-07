@@ -112,19 +112,19 @@ end
 
 function produce_data(bound=16,restrict=false;start=1)
     if restrict
-        filter!(x->x.numSpecies==bound,systems)
+        localsystems=filter(x->x.numSpecies==bound,systems)
     else
-        filter!(x->x.numSpecies<=bound,systems)
+        localsystems=filter!(x->x.numSpecies<=bound,systems)
     end
-    systems=systems[start:end]
+    localsystems=localsystems[start:end]
     mkpath("out")
     mkpath("out/perturb_info")
     open("out/rejects.jl","w") do io
         println(io,rejects)
     end
     count=1
-    total=length(systems)
-    for sys in systems
+    total=length(localsystems)
+    for sys in localsystems
         local name=sys.ID
         print(name)
         println(", system $count/$total:")
