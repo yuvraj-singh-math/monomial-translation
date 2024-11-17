@@ -140,7 +140,6 @@ function data_dump(sys::ODEbaseModel;beginning=1,slow=false)
     matrix=[]
     perturbations=perturbSystem(sys)
     name=sys.ID
-    i=1
     len=length(perturbations)
     #if @isdefined slow
         if slow
@@ -151,6 +150,7 @@ function data_dump(sys::ODEbaseModel;beginning=1,slow=false)
     #else
     fulsup=fully_supported_minors
     #end
+    i=beginning
     for per in perturbations[beginning:end]
         #println("Perturbation $i/$len")
         mat=matrix_from_system(per[1])
