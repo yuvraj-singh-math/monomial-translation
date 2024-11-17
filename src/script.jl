@@ -106,53 +106,52 @@ end
 #   return prod(b)
 #nd
 
-#function fully_supported_minors_nonsparse(mat::QQMatrix)
-    #cols=[mat[:,i] for i in 1:number_of_columns(mat)];
-    #allminors=Combinatorics.combinations(cols,number_of_rows(mat));
-    #allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
-    #zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
-    ## try to get around having to collect
-    #numallminors=0
-    #numzerominors=0
-    #for x in allminors
-        #numallminors=numallminors+1
-    #end
-    #for x in zerominors
-        #numzerominors=numzerominors+1
-    #end
-    #return [numallminors,numzerominors]
-#end
+function fully_supported_minors_nonsparse(mat::QQMatrix)
+    cols=[mat[:,i] for i in 1:number_of_columns(mat)];
+    allminors=Combinatorics.combinations(cols,number_of_rows(mat));
+    allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
+    zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
+    # try to get around having to collect
+    numallminors=0
+    numzerominors=0
+    for x in allminors
+        numallminors=numallminors+1
+    end
+    for x in zerominors
+        numzerominors=numzerominors+1
+    end
+    return [numallminors,numzerominors]
+end
 
-#function fully_supported_minors_nonsparse_collection(mat::QQMatrix)
-    #cols=[mat[:,i] for i in 1:number_of_columns(mat)];
-    #allminors=Combinatorics.combinations(cols,number_of_rows(mat));
-    #allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
-    #zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
-    ## try to get around having to collect
-    #numallminors=length(collect(allminors))
-    #allminors=nothing
-    #numzerominors=length(collect(zerominors))
-    #zerominors=nothing
-    #return [numallminors,numzerominors]
-#end
+function fully_supported_minors_nonsparse_collection(mat::QQMatrix)
+    cols=[mat[:,i] for i in 1:number_of_columns(mat)];
+    allminors=Combinatorics.combinations(cols,number_of_rows(mat));
+    allminors=Iterators.filter(x->is_minor_fully_supported(x),allminors);
+    zerominors=Iterators.filter(m->is_det_zero(matrix(QQ,hcat(m...))),allminors);
+    numallminors=length(collect(allminors))
+    allminors=nothing
+    numzerominors=length(collect(zerominors))
+    zerominors=nothing
+    return [numallminors,numzerominors]
+end
 
 
-function data_dump(sys::ODEbaseModel)
+function data_dump(sys::ODEbaseModel;beginning=1,slow=false)
     matrix=[]
     perturbations=perturbSystem(sys)
     name=sys.ID
     i=1
     len=length(perturbations)
     #if @isdefined slow
-        #if slow
-            #fulsup=fully_supported_minors_nonsparse
-        #else
-            #fulsup=fully_supported_minors
-        #end
+        if slow
+            fulsup=fully_supported_minors_nonsparse_collection
+        else
+            fulsup=fully_supported_minors
+        end
     #else
     fulsup=fully_supported_minors
     #end
-    for per in perturbations
+    for per in perturbations[beginning:end]
         #println("Perturbation $i/$len")
         mat=matrix_from_system(per[1])
         #println("Minors computed. Now filtering for zero determinants")

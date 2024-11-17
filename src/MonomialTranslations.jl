@@ -97,20 +97,23 @@ end
 # ,grad::Bool=false,ord::Bool=false,shuff::Bool=false,tiebreaker::Bool=true
 function greedy_vertex_alignment(system::Vector)
     polRing=parent(system[1])
-    points=[ vertices_of_function(f) for f in system]
+    #points=[ vertices_of_function(f) for f in system]
+    points=[ collect(Nemo.exponent_vectors(f))  for f in system]
     perm=sortperm(points)
     points=points[perm]
     system=system[perm]
     for i in 1:(length(system)-1)
         max_monomial=integer_stuff(points,length(system),i)
         system=system.*[prod(gens(polRing).^m) for m in max_monomial]
-        points=[ vertices_of_function(f) for f in system]
+        #points=[ vertices_of_function(f) for f in system]
+        points=[ collect(Nemo.exponent_vectors(f))  for f in system]
     end
     return system
 end
 
 
-function produce_data(bound=16,restrict=false;start=1)
+# perturbstart only applies for the *first* system, 
+function produce_data(bound=16,restrict=false;start=1,perturbstart=1,slowalgo=false)
     if restrict
         localsystems=filter(x->x.numSpecies==bound,systems)
     else
@@ -124,12 +127,13 @@ function produce_data(bound=16,restrict=false;start=1)
     end
     count=1
     total=length(localsystems)
+    beginningfirst=perturbstart
     for sys in localsystems
         local name=sys.ID
         print(name)
         println(", system $count/$total:")
         time=@elapsed begin
-        data=data_dump(sys)
+        data=data_dump(sys,beginning=beginningfirst,slow=slowalgo)
         end
         num=length(data[1])
         i=1
@@ -153,6 +157,7 @@ function produce_data(bound=16,restrict=false;start=1)
         println(log,"[$name:TOTAL]: $time")
         close(log)
         count=count+1
+        beginningfirst=1
     end
 end
 end
