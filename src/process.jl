@@ -48,38 +48,9 @@ global result=[]
 
 for sys in systems
     data=perturbInfo(sys)
-    up=score1(data[end])
-    filtered=filter(x->score1(x)==up,data)
-    if length(filtered)>1
-        println(sys.ID)
-        for f in filtered
-            println([sc(f) for sc in scores])
-        end
-    end
-end
-
-for sys in systems
-    data=perturbInfo(sys)
-    #up=max([score1(datum) for datum in data[1:end]]...)
-    #original=data[end]
-    #filtered=filter(x->score1(x)==up,data)
     wins=[Int(score(data[end])>=max([score(datum) for datum in data]...)) for score in scores]
-    #if !(data[end] in filtered)
-        #println("$(sys.ID) bad")
-    #end
-    #temp=[length(filter(x->score(x)>=score(data[end]),filtered)) for score in scores]
-    #println(temp)
-    #if length(filtered)>1
-        #println(sys.ID)
-        #for datum in data
-            #if score1(datum)==up
-                #println(datum)
-            #end
-        #end
-        #println(wins)
-	push!(result,vcat([sys.ID],wins))
-	println(wins)
-    #end
+    push!(result,vcat([sys.ID],wins))
+    println(wins)
 end
 
 csv=[]

@@ -11,11 +11,10 @@ function matrix_from_system(pol_system)
     return M
 end
 
-
 # We return the 2n perturbations of degree 1 as well as the system itself
 function perturbSystem(system::ODEbaseModel)
     trans=[]
-    sys,newring=generic_polynomial_system(system)
+    sys,newring=generic_polynomial_system(system,reduce=true)
     # remove 0 polynomials
     filter!(x->!iszero(x),sys)
     for m in gens(newring)
@@ -33,7 +32,6 @@ end
 function IDToODE(ID)
     return filter(m->m.ID==ID,systems)[1]
 end
-
 
 # We work globally with QQMatrix since our generic_polynomial_system has rational coefficients
 function is_det_zero(mat::QQMatrix)
@@ -97,14 +95,6 @@ end
 function number_of_fully_supported_minors(mat::QQMatrix)
     return length(fully_supported_minors(mat))
 end
-
-#function is_minor_fully_supported(submat::Vector{Vector{QQFieldElem}})
-#   dimen=length(submat)
-#   adj_matrix=BitArray{2}(hcat([[!is_zero(submat[i][j]) for i in 1:dimen] for j in 1:dimen]...))
-#   a,b=findmaxcardinalitybipartitematching(adj_matrix)
-    # b is a bitvector where the i-th component is true (resp. false) if the i-th row is (resp. is not) matched
-#   return prod(b)
-#nd
 
 function fully_supported_minors_nonsparse(mat::QQMatrix)
     cols=[mat[:,i] for i in 1:number_of_columns(mat)];
