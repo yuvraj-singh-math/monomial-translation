@@ -15,7 +15,7 @@ function __init__()
 	for sys in unfiltered_systems
             # Note that for f=2*x1, even though this is monomial, and has no toric solutions, is_monomial returns false
             # so we look at the length of the list of monomials, check if its 1
-	    if sum([length(collect(monomials(f)))==1 for f in generic_polynomial_system(sys)[1]])==0
+	    if sum([length(collect(monomials(f)))==1 for f in get_polynomials_random_specialization(sys)[1]])==0
                 push!(systems,sys)
             else
 		rejects[sys.ID]="Contains monomial equation";
@@ -30,7 +30,7 @@ end
 include("script.jl")
 
 #all_models=get_odebase_model.(ODEbaseModels)
-#systems=generic_polynomial_system.(filter(x->x.massAction,get_odebase_model.(all_models)))
+#systems=get_polynomials_random_specialization.(filter(x->x.massAction,get_odebase_model.(all_models)))
 
 # Could also work over finite field to make det computations faster (as all we care about is whether a determinant is zero) TODO
 

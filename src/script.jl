@@ -14,10 +14,10 @@ end
 # We return the 2n perturbations of degree 1 as well as the system itself
 function perturbSystem(system::ODEbaseModel)
     trans=[]
-    sys,newring=generic_polynomial_system(system,reduce=true)
+    sys,specializationHomomorphism=get_polynomials_random_specialization(system,reduce=true)
     # remove 0 polynomials
     filter!(x->!iszero(x),sys)
-    for m in gens(newring)
+    for m in gens(codomain(specializationHomomorphism))
         for k in 1:length(sys)
             perturb=[m^Int(j==k) for j in 1:length(sys)]
             minperturb=[m^Int(j!=k) for j in 1:length(sys)]
@@ -33,7 +33,7 @@ function IDToODE(ID)
     return filter(m->m.ID==ID,systems)[1]
 end
 
-# We work globally with QQMatrix since our generic_polynomial_system has rational coefficients
+# We work globally with QQMatrix since our get_polynomials_random_specialization has rational coefficients
 function is_det_zero(mat::QQMatrix)
     # returns "no method matching AbstractFloat"??
     if number_of_columns(mat)==number_of_rows(mat)
