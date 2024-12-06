@@ -24,8 +24,10 @@ function matrix_from_system(pol_system)
     return M
 end
 
-function bigperturb(system::Vector,polring)
-    trans=[prod(gens(polring).^rand(UInt8,length(gens(polring)))) for i in system]
+function bigperturb(system::Vector,specializationHom)
+    trans=[prod(gens(codomain(specializationHom)).^rand(UInt8,length(gens(codomain(specializationHom))))) for i in system]
+    println(first(trans))
+    println(first(system))
     explodedSystems=[trans[i].*system[i] for i in 1:length(system)]
     return explodedSystems
 end
@@ -35,13 +37,13 @@ function testing(syss::Vector,lazy=true)
     stats=[]
     for sys in syss
         println(sys.ID)
-        gen_sys,newring=generic_polynomial_system(sys)
+        gen_sys,specializationHom=get_polynomials_random_specialization(sys)
         filter!(x->!iszero(x),gen_sys)
         gen_sys=unique(gen_sys)
         lowerbound=score(matrix_from_system(gen_sys))
 	results_sys=[]
         for x in 1:10
-            per=bigperturb(gen_sys,newring)
+            per=bigperturb(gen_sys,specializationHom)
             worstbound=score(matrix_from_system(per))
             modsys=greedy_vertex_alignment(per,score,lazy,false,false,false)
             midbound=score(matrix_from_system(modsys))
