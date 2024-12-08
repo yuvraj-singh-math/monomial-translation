@@ -10,7 +10,7 @@ function perturbInfo(sys::ODEbaseModel)
     if @isdefined directory
         file="$directory/$location-matrix.csv"
     else
-        file="out/perturb_info/$location-matrix.csv"
+        file="../out/perturb_info/$location-matrix.csv"
     end
     
     if !isfile(file)
@@ -31,7 +31,7 @@ end
 
 unfiltered_systems=get_odebase_model.(ODEbaseModels);
 
-systems=filter(x->isfile("out/perturb_info/$(x.ID)-matrix.csv"),unfiltered_systems)
+systems=filter(x->isfile("../out/perturb_info/$(x.ID)-matrix.csv"),unfiltered_systems)
 systems=filter(x->x.massAction,systems);
 
 # 1        2                                          3                                             4                              5                       6

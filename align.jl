@@ -11,6 +11,7 @@ systems=get_odebase_model.(ODEbaseModels);
 
 systems=filter(x->x.massAction,systems);
 sort!(systems,by=x->x.numSpecies);
+systems=systems[1:end-1]
 
 function matrix_from_system(pol_system)
     mons=unique(collect(Iterators.flatten([collect(monomials(f)) for f in pol_system])))
@@ -26,35 +27,37 @@ end
 
 function bigperturb(system::Vector,specializationHom)
     trans=[prod(gens(codomain(specializationHom)).^rand(UInt8,length(gens(codomain(specializationHom))))) for i in system]
-    println(first(trans))
-    println(first(system))
+    #println(first(trans))
+    #println(first(system))
     explodedSystems=[trans[i].*system[i] for i in 1:length(system)]
     return explodedSystems
 end
 
 function testing(syss::Vector,lazy=true)
-    results=[]
     stats=[]
+    results=[]
     for sys in syss
         println(sys.ID)
-        gen_sys,specializationHom=get_polynomials_random_specialization(sys)
+        gen_sys,specializationHom=get_polynomials_random_specialization(sys,reduce=true);
         filter!(x->!iszero(x),gen_sys)
-        gen_sys=unique(gen_sys)
         lowerbound=score(matrix_from_system(gen_sys))
 	results_sys=[]
         for x in 1:10
             per=bigperturb(gen_sys,specializationHom)
             worstbound=score(matrix_from_system(per))
-            modsys=greedy_vertex_alignment(per,score,lazy,false,false,false)
+            time=@elapsed begin
+            modsys=greedy_vertex_alignment(per);
+            end
+            println(time)
             midbound=score(matrix_from_system(modsys))
             println([-lowerbound,-midbound,-worstbound])
             push!(results,[sys.ID,-lowerbound,-midbound,-worstbound])
             push!(results_sys,[sys.ID,-lowerbound,-midbound,-worstbound])
         end
-	average=sum([result[3] for result in results])/10
-	max=results[1][3]
-	min=-lowerbound
-	push!(stats,[sys.ID,min,average,max])
+	average=sum([result[3] for result in results_sys])/10
+	highest=max([x[3] for x in results_sys]...)
+	lowest=min([x[3] for x in results_sys]...)
+	push!(stats,[sys.ID,-lowerbound,lowest,average,highest,results_sys[1][4]])
     end
     return results,stats
 end
