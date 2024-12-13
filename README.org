@@ -1,5 +1,26 @@
 #+TITLE: MonomialTranslation.jl
 
-MonomialTranslation.jl is a module which makes available one function, ~greedy_vertex_alignment~, which takes a system of polynomials and a scoring function, and returns a system greedily optimising for this system.
+MonomialTranslations.jl is the supplementary Julia module to our [[LINK][paper]]. It allows the user to verify our results (up to error due to random numbers).
+* Installation
+Ensure [[https://github.com/yuvraj-singh-math/julia-odebase][OscarODEbase]] is installed first.
 
-~script.jl~ outputs data in ~ODEbase/out~ describing all ODEbase models of species less than or equal to 16, and their degree 1 perturbations (multiplying a polynomial by $x_i^{\pm 1}$), in terms of the number of non-trivial (zero) minors, number of zero minors, and number of minors of the corresponding Macaulay matrix of the ODEs with generic parameters. To use it,  run ~julia script.jl~ and to only generate for models of a certain species, run ~julia script.jl NUM_SPECIES~.
+#+begin_src
+git clone https://github.com/yuvraj-singh-math/monomial-translation.git
+cd monomial-translation
+#+end_src
+Run ~julia~ and activate the module:
+#+begin_src
+julia> ]activate .
+#+end_src
+* Usage
+Include the module:
+#+begin_src
+julia> using MonomialTranslations
+#+end_src
+The supported ODEbase systems are automatically loaded. The module exports two functions corresponding to the two experiments detailed in the paper.
+** Finding criteria for good embeddings
+This corresponds to Section 3 of the paper. The score data is reproduced by calling ~produce_data()~ with all arguments left to their default values. The scores for each perturbation are dumped in ~out/perturb_info~.
+
+After this, run ~src/process.jl~ to produce the score results dumped in csv format.
+** Finding good embeddings
+This corresponds to Section 4 of the paper. Run ~align.jl~ in the root of the repository, and the results are outputted to ~alignment-results.csv~. The figure in the paper can be reproduced by running ~csvtotex.jl~.
