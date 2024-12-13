@@ -24,3 +24,8 @@ This corresponds to Section 3 of the paper. The score data is reproduced by call
 After this, run ~src/process.jl~ to produce the score results dumped in csv format.
 ** Finding good embeddings
 This corresponds to Section 4 of the paper. Run ~align.jl~ in the root of the repository, and the results are outputted to ~alignment-results.csv~. The figure in the paper can be reproduced by running ~csvtotex.jl~.
+
+The 70th system in the list, BIOMD0000000205, was too memory intensive to include in the main driver script. To get the result for this system, run
+#+begin_src julia
+julia> test_with_random_parameters(get_odebase_model("BIOMD0000000205"))
+#+end_src
