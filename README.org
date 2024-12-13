@@ -4,17 +4,17 @@ MonomialTranslations.jl is the supplementary Julia module to our [[LINK][paper]]
 * Installation
 Ensure [[https://github.com/yuvraj-singh-math/julia-odebase][OscarODEbase]] is installed first.
 
-#+begin_src
+#+begin_src bash
 git clone https://github.com/yuvraj-singh-math/monomial-translation.git
 cd monomial-translation
 #+end_src
 Run ~julia~ and activate the module:
-#+begin_src
+#+begin_src julia
 julia> ]activate .
 #+end_src
 * Usage
 Include the module:
-#+begin_src
+#+begin_src julia
 julia> using MonomialTranslations
 #+end_src
 The supported ODEbase systems are automatically loaded. The module exports two functions corresponding to the two experiments detailed in the paper.
